@@ -14,7 +14,7 @@ export async function GET() {
       create: {
         email: 'techista@emporio.com',
         password,
-        name: 'Martin Garcia',
+        name: 'Martín García',
         role: 'techista',
         points: 2840,
       }
