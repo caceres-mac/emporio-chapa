@@ -1,13 +1,18 @@
 import { NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
+import { Pool } from 'pg'
 import bcrypt from 'bcryptjs'
 
-const prisma = new PrismaClient()
+const connectionString = process.env.DATABASE_URL!
+const pool = new Pool({ connectionString })
+const adapter = new PrismaPg(pool)
+const prisma = new PrismaClient({ adapter })
 
 export async function GET() {
   try {
     const password = await bcrypt.hash('123456', 10)
-    
+
     await prisma.user.upsert({
       where: { email: 'techista@emporio.com' },
       update: {},
@@ -17,7 +22,7 @@ export async function GET() {
         name: 'Martín García',
         role: 'techista',
         points: 2840,
-      }
+      },
     })
 
     await prisma.user.upsert({
@@ -29,7 +34,7 @@ export async function GET() {
         name: 'Admin Emporio',
         role: 'admin',
         points: 0,
-      }
+      },
     })
 
     return NextResponse.json({ ok: true, message: 'Usuarios creados correctamente' })
