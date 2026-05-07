@@ -1,26 +1,13 @@
 import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
+import { PrismaClient } from '@prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
+import { Pool } from 'pg'
 
-// Mock users for build - will use real Prisma in runtime
-const mockUsers = [
-  {
-    id: '1',
-    email: 'techista@emporio.com',
-    password: '$2a$10$abcdefghijklmnopqrstuvwxyz1234567890',
-    name: 'Martín García',
-    role: 'techista',
-    points: 2840
-  },
-  {
-    id: '2',
-    email: 'admin@emporio.com',
-    password: '$2a$10$abcdefghijklmnopqrstuvwxyz1234567890',
-    name: 'Admin Emporio',
-    role: 'admin',
-    points: 0
-  }
-]
+const pool = new Pool({ connectionString: process.env.DATABASE_URL! })
+const adapter = new PrismaPg(pool)
+const prisma = new PrismaClient({ adapter })
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -32,41 +19,31 @@ export const authOptions: NextAuthOptions = {
         accountType: { label: 'Account Type', type: 'text' }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
+        if (!credentials?.email || !credentials?.password || !credentials?.accountType) {
           return null
         }
 
-        try {
-          const user = mockUsers.find(u => u.email === credentials.email)
-          if (!user) {
-            return null
-          }
+        const email = credentials.email.trim().toLowerCase()
+        const accountType = credentials.accountType.trim().toLowerCase()
 
-          const isPasswordValid = await bcrypt.compare(
-            credentials.password,
-            user.password
-          )
+        const user = await prisma.user.findUnique({
+          where: { email }
+        })
 
-          if (!isPasswordValid) {
-            return null
-          }
+        if (!user) return null
 
-          // Verify account type matches
-          if (user.role !== credentials.accountType) {
-            return null
-          }
+        const isPasswordValid = await bcrypt.compare(credentials.password, user.password)
+        if (!isPasswordValid) return null
 
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-            points: user.points
-          }
-        } catch (error) {
-          console.error('Auth error:', error)
-          return null
-        }
+        if (user.role.toLowerCase() !== accountType) return null
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          points: user.points
+        } as any
       }
     })
   ],
@@ -83,9 +60,9 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (session.user && token) {
-        session.user.id = token.sub!
-        session.user.role = token.role as string
-        session.user.points = token.points as number
+        ;(session.user as any).id = token.sub!
+        ;(session.user as any).role = token.role as string
+        ;(session.user as any).points = token.points as number
       }
       return session
     }
