@@ -6,15 +6,17 @@ import { useSession } from 'next-auth/react'
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
 
   useEffect(() => {
+    if (status === 'loading') return
+
     if (!session) {
       router.push('/login')
       return
     }
 
-    const userRole = session.user?.role
+    const userRole = (session.user as any)?.role
     if (userRole === 'admin') {
       router.push('/dashboard/admin')
     } else if (userRole === 'techista') {
@@ -22,13 +24,11 @@ export default function DashboardPage() {
     } else {
       router.push('/login')
     }
-  }, [session, router])
+  }, [session, status, router])
 
   return (
     <div className="min-h-screen bg-[#111110] flex items-center justify-center">
-      <div className="text-white">
-        Redirigiendo al dashboard...
-      </div>
+      <div className="text-white">Redirigiendo...</div>
     </div>
   )
 }
