@@ -2,10 +2,12 @@ import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { PrismaClient } from '@prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
+import { Pool } from 'pg'
 
-const prisma = new PrismaClient({
-  datasourceUrl: process.env.DATABASE_URL || "file:./dev.db"
-})
+const pool = new Pool({ connectionString: process.env.DATABASE_URL! })
+const adapter = new PrismaPg(pool)
+const prisma = new PrismaClient({ adapter })
 
 export const authOptions: NextAuthOptions = {
   providers: [
